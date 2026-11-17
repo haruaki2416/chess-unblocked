@@ -14,7 +14,7 @@ Without Supabase credentials, the board and local practice mode still work; acco
 ## Included in this first build
 
 - Responsive chess interface with legal move validation, move list, undo in local practice, and board flip.
-- Guest local practice and Supabase email/password account flow.
+- Guest local practice, Stockfish-powered bot games, and Supabase email/password account flow. Bot strength can be tuned with an approximate Elo slider; lightweight style presets currently adjust engine strength rather than using separate trained personalities.
 - Online room creation/joining, realtime game state, and basic clock controls.
 - Profile rating fields and a rating update SQL function is intentionally not faked client-side; production-rated games need server-verified results.
 - Analysis/study panel with legal-move arrows. Engine assistance is labelled and intended for unrated practice/study, never concealed in rated games.
