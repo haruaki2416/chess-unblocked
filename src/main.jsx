@@ -8,6 +8,12 @@ import { getBotMove } from './engine';
 
 const MODES=[{label:'Bullet',value:'1+0'},{label:'Blitz',value:'3+2'},{label:'Blitz',value:'5+0'},{label:'Rapid',value:'10+0'},{label:'Rapid',value:'15+10'},{label:'Classical',value:'30+0'}];
 const fresh=()=>new Chess();
+class ErrorBoundary extends React.Component {
+ state={error:null};
+ static getDerivedStateFromError(error){return {error};}
+ componentDidCatch(error,info){console.error('Chess Unblocked render error:',error,info);}
+ render(){if(this.state.error)return <div style={{minHeight:'100vh',background:'#101612',color:'#e9eee9',padding:32,fontFamily:'system-ui'}}><h1>Chess Unblocked couldn't start</h1><p>The frontend hit a rendering error:</p><pre style={{whiteSpace:'pre-wrap',color:'#ffb4a8'}}>{String(this.state.error?.stack||this.state.error)}</pre><button onClick={()=>location.reload()}>Reload</button></div>;return this.props.children;}
+}
 function App(){
  const [game,setGame]=useState(fresh); const [fen,setFen]=useState('start'); const [history,setHistory]=useState([]);
  const [user,setUser]=useState(null); const [profile,setProfile]=useState(null); const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [username,setUsername]=useState('');
@@ -24,7 +30,7 @@ function App(){
  const moveList=game.history({verbose:true});
  const fmt=n=>{const m=Math.floor(n/60),s=n%60;return m+':'+String(s).padStart(2,'0')};
  const reset=(newGame=fresh())=>{setGame(newGame);setFen('start');setHistory([]);setSeconds({w:parseInt(mode.split('+')[0])*60,b:parseInt(mode.split('+')[0])*60});setRunning(false);setRoom(null);setArrows([])};
- const onDrop=(from,to,promotion)=>{const next=new Chess(game.fen());try{const move=next.move({from,to,promotion:promotion||'q'});if(!move)return false;setGame(next);setFen(next.fen());setHistory(next.history());setRunning(true);setArrows([]);if(room){api.move(room.id,{from,to,promotion:promotion||'q'}).then(({game:row})=>{const synced=new Chess();if(row.fen!=='start')synced.load(row.fen);setGame(synced);setFen(row.fen);setHistory(synced.history());setRunning(row.status==='active')}).catch(async err=>{setNotice(err.message);try{const {game:row}=await api.getGame(room.id);const synced=new Chess();if(row.fen!=='start')synced.load(row.fen);setGame(synced);setFen(row.fen);setHistory(synced.history())}catch{}})}return true}catch{return false}};
+ const onDrop=({sourceSquare:from,targetSquare:to})=>{if(!from||!to)return false;const next=new Chess(game.fen());try{const promotion='q';const move=next.move({from,to,promotion});if(!move)return false;setGame(next);setFen(next.fen());setHistory(next.history());setRunning(true);setArrows([]);if(room){api.move(room.id,{from,to,promotion:promotion||'q'}).then(({game:row})=>{const synced=new Chess();if(row.fen!=='start')synced.load(row.fen);setGame(synced);setFen(row.fen);setHistory(synced.history());setRunning(row.status==='active')}).catch(async err=>{setNotice(err.message);try{const {game:row}=await api.getGame(room.id);const synced=new Chess();if(row.fen!=='start')synced.load(row.fen);setGame(synced);setFen(row.fen);setHistory(synced.history())}catch{}})}return true}catch{return false}};
  const signIn=async e=>{e.preventDefault();try{const data=authMode==='signup'?await api.signup({email,password,username:username.trim()||email.split('@')[0]}):await api.signin({email,password});setToken(data.token);setUser(data.user);setProfile(data.user);setNotice(authMode==='signup'?'Account created.':'Signed in.');setAuthOpen(false)}catch(err){setNotice(err.message)}};
  const signOut=()=>{setToken(null);setProfile(null);setUser(null);setRoom(null);setNotice('Signed out.')};
  const createRoom=async()=>{setBotEnabled(false);if(!user){setNotice('Sign in first to create an online game.');return}try{const {game:row}=await api.createGame({time_control:mode});reset();setRoom(row);setRoomCode(row.code);setSide('w');setNotice('Room '+row.code+' created. Share the code with your opponent.')}catch(err){setNotice(err.message)}};
@@ -41,4 +47,4 @@ function App(){
  {authOpen&&<div className="modalback" onClick={()=>setAuthOpen(false)}><form className="modal" onSubmit={signIn} onClick={e=>e.stopPropagation()}><button type="button" className="close" onClick={()=>setAuthOpen(false)}>×</button><div className="eyebrow">CHESS UNBLOCKED ACCOUNT</div><h2>{authMode==='signup'?'Create your account':'Welcome back'}</h2><p className="muted">Save your profile and play online with friends.</p>{authMode==='signup'&&<input value={username} onChange={e=>setUsername(e.target.value)} placeholder="Username" minLength="3" maxLength="20"/>}<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address"/><input type="password" required minLength="8" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password"/><button className="primary full">{authMode==='signup'?'Create account':'Log in'}</button><button type="button" className="switch" onClick={()=>setAuthMode(authMode==='signup'?'signin':'signup')}>{authMode==='signup'?'Already registered? Log in':'New here? Create an account'}</button></form></div>}
  </div>
 }
-createRoot(document.getElementById('root')).render(<App/>);
+createRoot(document.getElementById('root')).render(<ErrorBoundary><App/></ErrorBoundary>);
