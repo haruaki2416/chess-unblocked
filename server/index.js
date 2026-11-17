@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
@@ -114,7 +115,9 @@ app.post('/api/games/:id/moves', auth, async (req, res) => {
     const expectedColor = chess.turn();
     const expectedUser = expectedColor === 'w' ? game.white_id : game.black_id;
     if (expectedUser !== req.userId) { await client.query('rollback'); return fail(res, 'It is not your turn.', 409); }
-    const move = chess.move({ from: req.body.from, to: req.body.to, promotion: req.body.promotion || 'q' });
+    let move;
+    try { move = chess.move({ from: req.body.from, to: req.body.to, promotion: req.body.promotion || 'q' }); }
+    catch { await client.query('rollback'); return fail(res, 'Illegal move.'); }
     if (!move) { await client.query('rollback'); return fail(res, 'Illegal move.'); }
     const status = chess.isGameOver() ? 'finished' : 'active';
     const result = chess.isCheckmate() ? (chess.turn() === 'w' ? 'black' : 'white') : chess.isDraw() ? 'draw' : null;
