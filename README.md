@@ -1,25 +1,64 @@
 # Chess Unblocked
 
-A Chess.com-inspired chess site starter: legal chess, accounts, live game rooms, time controls, ratings, and a study/analysis panel.
+A Chess.com-inspired chess app with browser-based Stockfish bots and a Railway-hosted Express + PostgreSQL backend.
 
-## Run locally
+## Architecture
+
+- React + Vite frontend.
+- Express API served from the same Railway service.
+- Railway PostgreSQL stores accounts, profiles, games, and move history.
+- Passwords are hashed with bcrypt; sessions use signed JWTs.
+- The server validates online moves and applies Elo changes inside a database transaction.
+- Online boards poll the API for opponent moves. Realtime WebSockets can be added later.
+
+**Supabase has been removed.** There is no Supabase SDK, auth, database, or schema dependency.
+
+## Railway deployment
+
+1. In your Railway project, provision a PostgreSQL database if you haven't already.
+2. Open the Postgres service's Query tab and run the complete `server/schema.sql` file.
+3. Deploy this GitHub repository as a Railway service.
+4. Set these variables on the app service:
+   - `DATABASE_URL` = Railway reference to your Postgres service's `DATABASE_URL` (for example, `${{Postgres.DATABASE_URL}}`; use your actual service name).
+   - `JWT_SECRET` = a long random secret (at least 32 random bytes).
+   - `PORT` is provided by Railway; do not hardcode it.
+   - `VITE_API_URL` should be unset/blank when the frontend and API are served by this same service.
+5. Set the build command to `npm install && npm run build`.
+6. Set the start command to `npm start`.
+7. Open the generated Railway domain. Check `/api/health`; it should return `{"ok":true,"database":"connected"}`.
+
+The Express service serves the built `dist` frontend and handles `/api/*` on the same domain, so no CORS configuration is required for the standard single-service deployment.
+
+## Local development
 
 1. `npm install`
-2. Copy `.env.example` to `.env` and add your Supabase project URL + anon key.
-3. Run `supabase/schema.sql` in Supabase SQL Editor. Enable Realtime for `games` and `game_moves` if the publication command is not available in your project.
-4. `npm run dev`
+2. Create `.env` with:
+   ```env
+   DATABASE_URL=postgresql://...
+   JWT_SECRET=replace-with-a-long-random-secret
+   PORT=3001
+   CLIENT_ORIGIN=http://localhost:5173
+   VITE_API_URL=http://localhost:3001
+   ```
+3. Run `server/schema.sql` against your local or Railway PostgreSQL database.
+4. Terminal 1: `npm start`
+5. Terminal 2: `npm run dev`
 
-Without Supabase credentials, the board and local practice mode still work; accounts and online rooms are disabled.
+## Included
 
-## Included in this first build
+- Account creation and login backed by PostgreSQL.
+- Profile ratings, games played, and wins.
+- Online room creation and joining with room codes.
+- Server-side legal move validation and move history.
+- Elo updates after a rated game ends by checkmate or draw.
+- Browser Stockfish bot games with approximate Elo slider and style presets.
+- Time-control presets and responsive chess interface.
 
-- Responsive chess interface with legal move validation, move list, undo in local practice, and board flip.
-- Guest local practice, Stockfish-powered bot games, and Supabase email/password account flow. Bot strength can be tuned with an approximate Elo slider; lightweight style presets currently adjust engine strength rather than using separate trained personalities.
-- Online room creation/joining, realtime game state, and basic clock controls.
-- Profile rating fields and a rating update SQL function is intentionally not faked client-side; production-rated games need server-verified results.
-- Analysis/study panel with legal-move arrows. Engine assistance is labelled and intended for unrated practice/study, never concealed in rated games.
-- Time-control presets and check/checkmate/draw status.
+## Important limitations
 
-## Production hardening still required
-
-Before public launch, move move-validation, clock adjudication, and Elo updates into a trusted server/Edge Function; add rate limits, email verification, moderation/reporting, reconnect handling, and anti-cheat. The browser must never be trusted to submit a match result or rating change. Admin permissions must be granted server-side to a fixed allowlist, not by a public unlock code.
+- Online clocks are currently visual/basic and are not yet enforced by the server.
+- Online game updates use polling rather than WebSockets.
+- Draw offers, resignation, timeout adjudication, matchmaking, friends, chat, puzzles, and lessons are not implemented yet.
+- Bot Elo is an approximate strength target, not a certified rating; style presets are lightweight settings rather than separate trained engines.
+- Admin permissions and admin tools still need a server-side allowlist and audited endpoints.
+- Use HTTPS in production. Never expose `DATABASE_URL` or `JWT_SECRET` in frontend variables.
