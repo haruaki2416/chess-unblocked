@@ -4,6 +4,8 @@ import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Chess } from 'chess.js';
 
 const { Pool } = pg;
@@ -142,5 +144,12 @@ app.post('/api/games/:id/moves', auth, async (req, res) => {
     console.error(e); fail(res, 'Could not save move.', 500);
   } finally { client.release(); }
 });
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distDir = path.resolve(__dirname, '../dist');
+app.use(express.static(distDir));
+app.get(/.*/, (req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  res.sendFile(path.join(distDir, 'index.html'), err => { if (err) next(); });
+});
 app.use((err, _req, res, _next) => { console.error(err); res.status(500).json({ error: 'Internal server error.' }); });
-app.listen(PORT, () => console.log('Chess Unblocked API listening on ' + PORT));
+app.listen(PORT, () => console.log('Chess Unblocked web + API listening on ' + PORT));
