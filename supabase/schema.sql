@@ -34,8 +34,8 @@ alter table public.profiles enable row level security;
 alter table public.games enable row level security;
 alter table public.game_moves enable row level security;
 create policy "Profiles are readable" on public.profiles for select using (true);
-create policy "Users create own profile" on public.profiles for insert with check (auth.uid() = id);
-create policy "Users update own profile" on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
+create policy "Users create own profile" on public.profiles for insert with check (auth.uid() = id and rating = 1200 and games = 0 and wins = 0);
+-- Profile rating/stat changes are server-only; do not grant users direct UPDATE access.
 create policy "Games readable by everyone" on public.games for select using (true);
 create policy "Signed-in users create games" on public.games for insert to authenticated with check (auth.uid() = white_id);
 create policy "Players update their games" on public.games for update to authenticated using (auth.uid() = white_id or auth.uid() = black_id) with check (auth.uid() = white_id or auth.uid() = black_id);
